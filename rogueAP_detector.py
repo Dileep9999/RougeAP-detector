@@ -18,7 +18,7 @@ import modules.detectors.passive_detectors as passive_detectors
 import modules.manage_interfaces as manage_interfaces
 import modules.colors as colors
 import smtplib, ssl
-
+import json
 
 def print_info(info, type=0):
     if (type == 0):
@@ -38,13 +38,12 @@ def intro():
 	 "| | | (_) | (_| | |_| |  __// ___ \|  __/  | |_| |  __/ ||  __/ (__| |_ \n"+
 	 "|_|  \___/ \__, |\__,_|\___/_/   \_\_|     |____/ \___|\__\___|\___|\__| \n "+
 	 "          |___/                                                   v2.0\n"+
-     "\t\t\t\tby Ricardo Gonçalves - 0x4notherik\n"+ colors.get_color("ENDC"))
+     "\t\t\t\tby Dileep Bandla\n"+ colors.get_color("ENDC"))
 
 def usage():
 	intro()
 	print_info("Usage: ./rogue_detector.py [option]")
 	print("\nOptions:  -i interface\t\t -> the interface to monitor the network")
-	print("\t  -im interface\t\t -> interface for active mode")
 	print("\t  -p profile\t\t -> name of the profile to load")
 	print("\t  -s scan_type\t\t -> name of scanning type (iwlist, scapy)")
 	print("\t  -h hive_mode\t\t -> creates an AP")
@@ -52,9 +51,9 @@ def usage():
 	print("\t  -wifi_attacks_detect\t -> detects deauthentication and pmkid attacks")
 	print("\t  -a active_mode\t -> activates random probe requests")
 
-	print(colors.get_color("BOLD")+"\nExample:  ./rogue_detector.py -i iface -s iwlist -p example_profile.txt"+colors.get_color("ENDC"))
+	print(colors.get_color("BOLD")+"\nExample:sudo python3 ./rogue_detector.py -i iface -s iwlist"+colors.get_color("ENDC"))
 
-def parse_args(email):
+def parse_args(ssids):
 	##intro()
 	scanners = ["scapy", "iwlist"]
 	scanner_type = ""
@@ -117,18 +116,17 @@ def parse_args(email):
 			# print(profile,active_probing,profile_name,"--sqsqw")
 			try:
 				if (profile and active_probing):
-					print(profile,active_probing,profile_name,"--sqsqw")
 					manage_interfaces.change_mac(interface_monitor)
 					manage_interfaces.enable_monitor(interface_monitor)
-					iwlist_monitor.scan(email, interface, profile_name, active_probing, interface_monitor)
+					iwlist_monitor.scan(interface, profile_name, active_probing, interface_monitor, ssids)
 				elif (active_probing):
 					manage_interfaces.change_mac(interface_monitor)
 					manage_interfaces.enable_monitor(interface_monitor)
-					iwlist_monitor.scan(email, interface, active_probing, interface_monitor)
+					iwlist_monitor.scan(interface, active_probing, interface_monitor, ssids)
 				elif (profile):
-					iwlist_monitor.scan(email, interface, profile_name)
+					iwlist_monitor.scan(interface, profile_name, ssids)
 				else:
-					iwlist_monitor.scan(email, interface)
+					iwlist_monitor.scan(interface, ssids)
 			except Exception as e:
 				print("Exception:114 %s" %e)
 				return
@@ -201,14 +199,16 @@ def check_root():
 
 def main():
 	check_root()
-	sender_email = os.environ['email_username']
-	password = os.environ['email_password']
-	server = smtplib.SMTP('smtp.gmail.com', 587)
-	server.ehlo() # Can be omitted
-	server.starttls(context=context) # Secure the connection
-	server.ehlo()
-	server.login(sender_email, password)
-	parse_args(server)
+	try:
+		with open('ssids.json') as f:
+			ssids = json.load(f)
+			print(colors.get_color("ORANGE") + str(ssids) + colors.get_color("ENDC"))
+	except:
+		print(colors.get_color("FAIL") + "[x] File SSID.json Not Found" + colors.get_color("ENDC"))
+		sys.exit(0)
+	parse_args(ssids)
+	
+	
 	
 if __name__ == '__main__':
 	main()

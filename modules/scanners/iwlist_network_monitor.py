@@ -1,8 +1,7 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # Rogue Access Point Detector
 # version: 2.0
-# author: anotherik (Ricardo Gonçalves)
 
 ##################################
 #        Scanners Module         #
@@ -31,7 +30,6 @@ manufacturer_table = "manufacturer/manufacturer_table.txt"
 table_of_manufacturers = {}
 
 
-global interface_monitor
 
 
 def getTimeDate():
@@ -46,49 +44,11 @@ log_name = "logs/run_"+getTimeDate2()+".log"
 log_file = open(log_name, 'a')
 
 
-class Unbuffered:
-
-    def __init__(self, stream):
-        self.stream = stream
-
-    def write(self, data):
-        self.stream.write(data)
-        # self.stream.flush()
-        log_file.write(data)
-
-
-def signal_handler(signal, frame):
-    try:
-        manage_interfaces.disable_monitor(interface_monitor)
-    except err:
-        logs_api.errors_log(str(err))
-        pass
-
-    print(colors.get_color("GRAY") +
-          "\nExiting...\nGoodbye!"+colors.get_color("ENDC"), flush=True)
-    sys.exit(0)
-
-
 def scan(*arg):
 
     active_probing, profile = False, False
-    email = arg[0]
-    interface = arg[1]
-    global interface_monitor
-    if(len(arg) == 3):
-        profile = arg[2]
-    elif(len(arg) == 4):
-        active_probing = arg[2]
-        interface_monitor = arg[3]
-    elif(len(arg) == 4):
-        profile = arg[2]
-        active_probing = arg[3]
-        interface_monitor = arg[4]
-
-    global table_of_manufacturers
-    table_of_manufacturers = manufacturer.MacParser(
-        manufacturer_table).refresh()
-
+    interface = arg[0]
+    ssids= arg[1]
     table = ['Date', 'AP Name', 'CH', 'BSSID', 'Brand', 'Signal', 'Quality',
              'Frequency', 'Encryption', 'Cipher', 'Authentication', 'TSF']
     print(colors. get_color("BOLD") + '{:^22s}|{:^24s}|{:^9s}|{:^19s}|{:^15s}|{:^8s}|{:^9s}|{:^11s}|{:^18s}|{:^8s}|{:^16s}|{:^16s}'.format(
@@ -98,80 +58,29 @@ def scan(*arg):
         try:
             for line in ap_list:
                 # filter to check if APs already exists
-                if filter_aps(line, profile):
-                    limited = False
-                    if (noknowledge_detector.suspicious_behaviours(line, captured_aps) == "suspicious_1"):
-                        print(colors.get_color("FAIL") + '{:^22s} {:<23s}  {:^9s} {:^19s} {:^15s} {:^8s} {:^9s} {:^10s} {:^18s} {:^8s} {:^16s}   {:<18s}'.format(getTimeDate(
-                            ), line['essid'], line['channel'], line['mac'], line['manufacturer'], line['signal'], line['quality'], line['frequency'], line['key type'], line['group cipher'], line['authentication suites'], line['tsf']) + colors.get_color("ENDC"), flush=True)
-                    # captured AP with same bssid and dif essid and encryption (karma)
-                    elif (noknowledge_detector.suspicious_behaviours(line, captured_aps) == "suspicious_2" or noknowledge_detector.suspicious_behaviours(line, captured_aps) == "suspicious_4"):
-                        print(colors.get_color("FAIL1") + '{:^22s} {:<23s}  {:^9s} {:^19s} {:^15s} {:^8s} {:^9s} {:^10s} {:^18s} {:^8s} {:^16s}   {:<18s}'.format(getTimeDate(
-                            ), line['essid'], line['channel'], line['mac'], line['manufacturer'], line['signal'], line['quality'], line['frequency'], line['key type'], line['group cipher'], line['authentication suites'], line['tsf']) + colors.get_color("ENDC"), flush=True)
-                    # captured AP with same essid, bssid, encryption and dif channel
-                    elif (noknowledge_detector.suspicious_behaviours(line, captured_aps) == "suspicious_3"):
-                        print(colors.get_color("FAIL2") + '{:^22s} {:<23s}  {:^9s} {:^19s} {:^15s} {:^8s} {:^9s} {:^10s} {:^18s} {:^8s} {:^16s}   {:<18s}'.format(getTimeDate(
-                            ), line['essid'], line['channel'], line['mac'], line['manufacturer'], line['signal'], line['quality'], line['frequency'], line['key type'], line['group cipher'], line['authentication suites'], line['tsf']) + colors.get_color("ENDC"), flush=True)
-                    # captured AP with same essid, bssid, channel and dif encryption
-                    elif (noknowledge_detector.suspicious_behaviours(line, captured_aps) == "suspicious_4"):
-                        print(colors.get_color("ORANGE") + '{:^22s} {:<23s}  {:^9s} {:^19s} {:^15s} {:^8s} {:^9s} {:^10s} {:^18s} {:^8s} {:^16s}   {:<18s}'.format(getTimeDate(
-                            ), line['essid'], line['channel'], line['mac'], line['manufacturer'], line['signal'], line['quality'], line['frequency'], line['key type'], line['group cipher'], line['authentication suites'], line['tsf']) + colors.get_color("ENDC"), flush=True)
+                if filter_aps(line):
+                    if line['essid'] in ssids:
+                        if line['mac'] in ssids[line['essid']]:
+                            print('{:^22s} {:<23s}  {:^9s} {:^19s} {:^15s} {:^8s} {:^9s} {:^10s} {:^18s} {:^8s} {:^16s}   {:<18s}'.format(getTimeDate(
+                                    ), line['essid'], line['channel'], line['mac'], line['manufacturer'], line['signal'], line['quality'], line['frequency'], line['key type'], line['group cipher'], line['authentication suites'], line['tsf']))
+                        else:
+                            print(colors. get_color('FAIL') + '{:^22s} {:<23s}  {:^9s} {:^19s} {:^15s} {:^8s} {:^9s} {:^10s} {:^18s} {:^8s} {:^16s}   {:<18s}'.format(getTimeDate(
+                                ), line['essid'], line['channel'], line['mac'], line['manufacturer'], line['signal'], line['quality'], line['frequency'], line['key type'], line['group cipher'], line['authentication suites'], line['tsf']) + colors.get_color("ENDC"),flush=True)
                     else:
-                        email.sendmail("bdileep9999@gmail.com", "bdileep9999@gmail.com", "Rouge AP detected..")
                         print('{:^22s} {:<23s}  {:^9s} {:^19s} {:^15s} {:^8s} {:^9s} {:^10s} {:^18s} {:^8s} {:^16s}   {:<18s}'.format(getTimeDate(
-                            ), line['essid'], line['channel'], line['mac'], line['manufacturer'], line['signal'], line['quality'], line['frequency'], line['key type'], line['group cipher'], line['authentication suites'], line['tsf']))
-                    if(profile):
-                        passive_detectors.authorized_aps(line, profile)
-
-                    if(line['key type'] == "Open"):
-                        passive_detectors.free_WiFis_detect(line, captured_aps)
-
-                    passive_detectors.spot_karma(line)
-                    # passive_detectors.deauth_detector(interface_monitor) # new stufx
-
-                    if (active_probing):
-                        passive_detectors.spoting_PineAP(
-                            line, active_probing, interface_monitor)
-                    else:
-                        passive_detectors.spoting_PineAP(line)
-
-                    passive_detectors.check_tsf(line)
-
+                                ), line['essid'], line['channel'], line['mac'], line['manufacturer'], line['signal'], line['quality'], line['frequency'], line['key type'], line['group cipher'], line['authentication suites'], line['tsf']),flush=True)
+            # signal.signal(signal.SIGINT, signal_handler)
                     captured_aps.append(line)
-
-            signal.signal(signal.SIGINT, signal_handler)
             time.sleep(1)
         except Exception as err:
+            print(err,"ERROR")
             logs_api.errors_log(str(err))
             pass
 
-
-def get_results(interface):
-    list_of_results = []
-    try:
-        # call the process to get the output to parse
-        proc = subprocess.check_output(
-            "sudo iwlist "+interface+" scan", shell=True)
-        # break the output making an array containing the info of each Access Point
-        list_of_results = re.split(r'\bCell \d{2}\b - ', proc.decode("ascii"))[1:]
-    except subprocess.CalledProcessError:
-        logs_api.errors_log("Error"+str(subprocess.CalledProcessError))    
-    return parse(list_of_results)
-
-
 def filter_aps(*arg):
     access_point = arg[0]
-    profile = arg[1]
     # if profile mode is enabled filter results just for that essid
     filtered_ssid = ""
-    if (profile):
-        with open(profile, 'r') as f:
-            next(f)  # skipping first line
-            for line in f:
-                filtered_ssid = line.split()[0]
-                break
-
-        if access_point['essid'] != filtered_ssid:
-            return False
 
     for ap in captured_aps:
         try:
@@ -182,13 +91,23 @@ def filter_aps(*arg):
             pass
     return True
 
+def get_results(interface):
+    list_of_results = []
+    try:
+        # call the process to get the output to parse
+        proc = subprocess.check_output(
+            "sudo iwlist "+interface+" scan", shell=True)
+        # break the output making an array containing the info of each Access Point
+        list_of_results = re.split(r'\bCell \d{2}\b - ', proc.decode("ascii"))[1:]
+    except subprocess.CalledProcessError:
+        logs_api.errors_log("Error"+str(subprocess.CalledProcessError))
+    return parse(list_of_results)
 
 def parse(networks):
     parsed_list = []
 
     for network in networks:
         try:
-            print("Hleooo")
             ap = {}
             network = network.strip()
             essid = ""
